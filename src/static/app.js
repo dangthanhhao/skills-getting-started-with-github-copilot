@@ -7,37 +7,11 @@ document.addEventListener("DOMContentLoaded", () => {
   // Store activities globally for form handler access
   let activities = {};
 
-  // Local storage helpers for signups
-  const SIGNUPS_KEY = 'mhsa_signups';
-  function loadSignups() {
-    try {
-      return JSON.parse(localStorage.getItem(SIGNUPS_KEY)) || {};
-    } catch (_e) {
-      return {};
-    }
-  }
-  function saveSignups(map) {
-    localStorage.setItem(SIGNUPS_KEY, JSON.stringify(map));
-  }
-  function getParticipantsFor(activityId) {
-    const map = loadSignups();
-    return map[activityId] || [];
-  }
-  function addParticipant(activityId, email) {
-    const map = loadSignups();
-    const list = map[activityId] || [];
-    if (!list.includes(email)) {
-      list.push(email);
-      map[activityId] = list;
-      saveSignups(map);
-    }
-  }
-
   function renderParticipants(sectionEl, activityId) {
     const listEl = sectionEl.querySelector('.participants-list');
     const emptyEl = sectionEl.querySelector('.participants-empty');
     const badgeEl = sectionEl.querySelector('.participants-count-badge');
-    const participants = getParticipantsFor(activityId);
+    const participants = activities[Object.keys(activities).find(name => activities[name].id === activityId)]?.participants || [];
 
     listEl.innerHTML = '';
     if (participants.length) {
@@ -45,7 +19,37 @@ document.addEventListener("DOMContentLoaded", () => {
       listEl.classList.remove('hidden');
       for (const email of participants) {
         const li = document.createElement('li');
-        li.textContent = email;
+        const span = document.createElement('span');
+        span.textContent = email;
+        li.appendChild(span);
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-participant-btn';
+        deleteBtn.innerHTML = '✕';
+        deleteBtn.title = 'Unregister from activity';
+        deleteBtn.addEventListener('click', async () => {
+          try {
+            const response = await fetch(
+              `/activities/${encodeURIComponent(activityId)}/unregister?email=${encodeURIComponent(email)}`,
+              { method: 'POST' }
+            );
+            if (response.ok) {
+              // Refetch activities to sync with backend
+              await fetchActivities();
+              const card = document.querySelector(`.activity-card[data-activity-id="${activityId}"]`);
+              if (card) {
+                const section = card.querySelector('.participants');
+                if (section) renderParticipants(section, activityId);
+              }
+            } else {
+              alert('Failed to unregister. Please try again.');
+            }
+          } catch (error) {
+            console.error('Error unregistering:', error);
+            alert('Failed to unregister. Please try again.');
+          }
+        });
+        li.appendChild(deleteBtn);
         listEl.appendChild(li);
       }
     } else {
@@ -145,8 +149,8 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.className = "success";
         signupForm.reset();
 
-        // Persist and refresh the participants UI
-        addParticipant(activityId, email);
+        // Refetch activities to sync with backend
+        await fetchActivities();
         const card = document.querySelector(`.activity-card[data-activity-id="${activityId}"]`);
         if (card) {
           const section = card.querySelector('.participants');
