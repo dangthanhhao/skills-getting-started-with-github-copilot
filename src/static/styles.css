@@ -142,3 +142,98 @@ footer {
   padding: 20px;
   color: #666;
 }
+
+/* Participants section styling */
+.participants {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
+  border: 1px solid #e3e8ef;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+.participants-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.participants-header h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.participants-count-badge {
+  display: inline-block;
+  min-width: 20px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: #3b82f6;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 1px 0 rgba(16,24,40,0.12) inset;
+}
+
+.participants-list {
+  margin: 0;
+  padding: 0;
+  color: #334155;
+  list-style: none;
+}
+
+.participants-list li {
+  margin: 6px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  background-color: #f0f4f8;
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+.delete-participant-btn {
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  font-size: 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  min-width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.delete-participant-btn:hover {
+  background-color: #dc2626;
+}
+
+.participants-empty {
+  margin: 0;
+  color: #64748b;
+  font-style: italic;
+}
+
+/* Utility if not already present */
+.hidden { display: none !important; }
+
+/* Optional: make cards that receive participants look nicer */
+.activity-card {
+  /* ...existing card styles if any... */
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  padding: 14px;
+  background: #fff;
+}

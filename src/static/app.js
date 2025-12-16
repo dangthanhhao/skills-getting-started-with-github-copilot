@@ -4,11 +4,66 @@ document.addEventListener("DOMContentLoaded", () => {
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
 
+  // Store activities globally for form handler access
+  let activities = {};
+
+  function renderParticipants(sectionEl, activityId) {
+    const listEl = sectionEl.querySelector('.participants-list');
+    const emptyEl = sectionEl.querySelector('.participants-empty');
+    const badgeEl = sectionEl.querySelector('.participants-count-badge');
+    const participants = activities[Object.keys(activities).find(name => activities[name].id === activityId)]?.participants || [];
+
+    listEl.innerHTML = '';
+    if (participants.length) {
+      emptyEl.classList.add('hidden');
+      listEl.classList.remove('hidden');
+      for (const email of participants) {
+        const li = document.createElement('li');
+        const span = document.createElement('span');
+        span.textContent = email;
+        li.appendChild(span);
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-participant-btn';
+        deleteBtn.innerHTML = '✕';
+        deleteBtn.title = 'Unregister from activity';
+        deleteBtn.addEventListener('click', async () => {
+          try {
+            const response = await fetch(
+              `/activities/${encodeURIComponent(activityId)}/unregister?email=${encodeURIComponent(email)}`,
+              { method: 'POST' }
+            );
+            if (response.ok) {
+              // Refetch activities to sync with backend
+              await fetchActivities();
+              const card = document.querySelector(`.activity-card[data-activity-id="${activityId}"]`);
+              if (card) {
+                const section = card.querySelector('.participants');
+                if (section) renderParticipants(section, activityId);
+              }
+            } else {
+              alert('Failed to unregister. Please try again.');
+            }
+          } catch (error) {
+            console.error('Error unregistering:', error);
+            alert('Failed to unregister. Please try again.');
+          }
+        });
+        li.appendChild(deleteBtn);
+        listEl.appendChild(li);
+      }
+    } else {
+      listEl.classList.add('hidden');
+      emptyEl.classList.remove('hidden');
+    }
+    if (badgeEl) badgeEl.textContent = participants.length.toString();
+  }
+
   // Function to fetch activities from API
   async function fetchActivities() {
     try {
       const response = await fetch("/activities");
-      const activities = await response.json();
+      activities = await response.json();
 
       // Clear loading message
       activitiesList.innerHTML = "";
@@ -17,6 +72,7 @@ document.addEventListener("DOMContentLoaded", () => {
       Object.entries(activities).forEach(([name, details]) => {
         const activityCard = document.createElement("div");
         activityCard.className = "activity-card";
+        activityCard.dataset.activityId = String(details.id);
 
         const spotsLeft = details.max_participants - details.participants.length;
 
@@ -26,6 +82,20 @@ document.addEventListener("DOMContentLoaded", () => {
           <p><strong>Schedule:</strong> ${details.schedule}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
         `;
+
+        // Participants section
+        const participantsSection = document.createElement('section');
+        participantsSection.className = 'participants';
+        participantsSection.innerHTML = `
+          <div class="participants-header">
+            <h4>Participants</h4>
+            <span class="participants-count-badge" title="Participant count">0</span>
+          </div>
+          <ul class="participants-list"></ul>
+          <p class="participants-empty">No participants yet.</p>
+        `;
+        activityCard.appendChild(participantsSection);
+        renderParticipants(participantsSection, details.id);
 
         activitiesList.appendChild(activityCard);
 
@@ -45,12 +115,28 @@ document.addEventListener("DOMContentLoaded", () => {
   signupForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    const email = document.getElementById("email").value;
-    const activity = document.getElementById("activity").value;
+    const email = document.getElementById("email").value.trim();
+    const activityNameFromSelect = document.getElementById("activity").value;
+
+    // Find the activity ID by matching the activity name
+    let activityId = null;
+    for (const [name, details] of Object.entries(activities)) {
+      if (name === activityNameFromSelect) {
+        activityId = details.id;
+        break;
+      }
+    }
+
+    if (!email || !activityId) {
+      messageDiv.textContent = "Please provide both email and activity.";
+      messageDiv.className = "error";
+      messageDiv.classList.remove("hidden");
+      return;
+    }
 
     try {
       const response = await fetch(
-        `/activities/${encodeURIComponent(activity)}/signup?email=${encodeURIComponent(email)}`,
+        `/activities/${encodeURIComponent(activityId)}/signup?email=${encodeURIComponent(email)}`,
         {
           method: "POST",
         }
@@ -62,6 +148,25 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+
+        // Refetch activities to sync with backend
+        await fetchActivities();
+        const card = document.querySelector(`.activity-card[data-activity-id="${activityId}"]`);
+        if (card) {
+          const section = card.querySelector('.participants');
+          if (section) renderParticipants(section, activityId);
+          
+          // Update availability count
+          const activityName = Object.entries(activities).find(([_, details]) => details.id === activityId)?.[0];
+          if (activityName) {
+            const activity = activities[activityName];
+            const spotsLeft = activity.max_participants - activity.participants.length;
+            const availabilityEl = card.querySelector('p:nth-of-type(3)');
+            if (availabilityEl) {
+              availabilityEl.textContent = `Availability: ${spotsLeft} spots left`;
+            }
+          }
+        }
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
